@@ -50,4 +50,5 @@ class TestDataStructure(unittest.TestCase):
 
 		contests = Contest.loadAll(self.db)
 		self.assertEqual(2, len(contests))
+		self.assertEqual({'icpc2016', 'SRM999'}, {contest.id for contest in contests})
 
