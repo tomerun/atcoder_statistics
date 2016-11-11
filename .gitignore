@@ -1,4 +1,6 @@
 .DS_Store
 config.json
+*.pyc
+__pycache__
 *.sublime-workspace
 *.sublime-project
