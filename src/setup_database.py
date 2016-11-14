@@ -44,7 +44,7 @@ def create_tables(db_connection):
 		cursor.execute(sql)
 
 		sql = '''CREATE TABLE tasks(
-		             contest_id INT REFERENCES contests(contest_id),
+		             contest_id VARCHAR(255) REFERENCES contests(contest_id),
 		             problem_id INT REFERENCES problems(problem_id),
 		             symbol VARCHAR(255) NOT NULL,
 		             path VARCHAR(255) NOT NULL,
@@ -52,21 +52,22 @@ def create_tables(db_connection):
 		cursor.execute(sql)
 
 		sql = '''CREATE TABLE task_points(
-		             contest_id INT REFERENCES contests(contest_id),
+		             contest_id VARCHAR(255) REFERENCES contests(contest_id),
 		             problem_id INT REFERENCES problems(problem_id),
 		             point INT NOT NULL,
 		             PRIMARY KEY(contest_id, problem_id));'''
 		cursor.execute(sql)
 
 		sql = '''CREATE TABLE results(
-		             contest_id INT REFERENCES contests(contest_id),
+		             contest_id VARCHAR(255) REFERENCES contests(contest_id),
 		             problem_id INT REFERENCES problems(problem_id),
-		             user_id VARCHAR(255) NOT NULL REFERENCES users(user_id),
+		             user_id VARCHAR(255) REFERENCES users(user_id),
 		             score INT NOT NULL,
 		             failure INT NOT NULL,
 		             elapsed INT NOT NULL,
 		             penalty INT NOT NULL,
-		             PRIMARY KEY(contest_id, problem_id));'''
+		             PRIMARY KEY(contest_id, problem_id, user_id),
+		             INDEX(user_id));'''
 		cursor.execute(sql)
 
 
