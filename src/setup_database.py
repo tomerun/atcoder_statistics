@@ -4,6 +4,7 @@ from contextlib import closing
 import MySQLdb
 import MySQLdb.cursors
 import json
+import os
 
 
 def create_tables(db_connection):
@@ -72,7 +73,7 @@ def create_tables(db_connection):
 
 
 if __name__ == '__main__':
-	with open('config.json', 'r') as config_file:
+	with open(os.path.join(os.path.dirname(__file__), 'config.json'), 'r') as config_file:
 		config = json.load(config_file)
 
 	db = MySQLdb.connect(host='localhost',
