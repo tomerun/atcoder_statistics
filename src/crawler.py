@@ -4,6 +4,7 @@ import sys
 import re
 import requests
 import datetime
+import time
 import lxml.html
 import lxml
 import cssselect
@@ -60,9 +61,57 @@ def crawl_contests():
 		for contest in contests:
 			contest.persist(con)
 
+def crawl_task(contest_id, row):
+	cells = row.cssselect('td')
+	symbol = cells[0].text_content()
+	title = cells[1].text_content()
+
+	link_url = cells[1].find('a').get('href')
+	link_match = re.match('/tasks/(.+)$', link_url)
+	if link_match:
+		path = link_match.group(1)
+	else:
+		raise RuntimeError('no task link')
+
+	submit_url = cells[4].find('a').get('href')
+	submit_match = re.match('/submit\?task_id=(\d+)$', submit_url)
+	if submit_match:
+		problem_id = int(submit_match.group(1))
+	else:
+		raise RuntimeError('no submit link')
+
+	problem = Problem(problem_id, title)
+	task = Task(contest_id, problem_id, symbol, path)
+
+	print(problem)
+	print(task)
+	db = database.get_connection()
+	db.autocommit(True)
+	with closing(db) as con:
+		problem.persist(con)
+		task.persist(con)
+
+def crawl_tasks(contest_id):
+	tasks_page = requests.get('https://{0}.contest.atcoder.jp/assignments?lang=ja'.format(contest_id))
+	root = lxml.html.fromstring(tasks_page.text)
+	task_list = root.cssselect('div#outer-inner table tbody tr')
+	for task_elem in task_list:
+		try:
+			crawl_task(contest_id, task_elem)
+		except Exception as e:
+			raise print(str(e) + ' : ' + contest_id)
+
+def crawl_all_contest_tasks():
+	db = database.get_connection()
+	with closing(db) as con:
+		contests = Contest.loadAll(db)
+
+	for contest in contests:
+		time.sleep(1)
+		crawl_tasks(contest.id)
 
 def main():
-	crawl_contests()
+	crawl_all_contest_tasks()
 
 if __name__ == '__main__':
 	main()
