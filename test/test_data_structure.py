@@ -3,7 +3,7 @@
 import unittest
 import MySQLdb
 import MySQLdb.cursors
-from  setup_database import create_tables
+from database import create_tables
 from contextlib import closing
 from data_structure import *
 
