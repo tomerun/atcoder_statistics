@@ -1,13 +1,16 @@
 # coding: utf-8
 import os
 import sys
+import json
 import re
-import requests
 import datetime
 import time
+
+import requests
 import lxml.html
 import lxml
 import cssselect
+
 import database
 from data_structure import *
 
@@ -40,11 +43,13 @@ def extract_contest_info(row):
 
 	return Contest(id, title, start_at, duration_sec)
 
+
 def crawl_contests_page(url):
 	page = requests.get('https://atcoder.jp' + url + '&lang=ja')
 	root = lxml.html.fromstring(page.text)
 	contest_list = root.cssselect('#main-div div.row > div:nth-of-type(2) table > tbody > tr')
 	return [extract_contest_info(contest_row) for contest_row in contest_list]
+
 
 def crawl_contests():
 	top = requests.get('https://atcoder.jp/contest/archive?lang=ja')
@@ -60,6 +65,7 @@ def crawl_contests():
 	with closing(db) as con:
 		for contest in contests:
 			contest.persist(con)
+
 
 def crawl_task(contest_id, row):
 	cells = row.cssselect('td')
@@ -91,6 +97,7 @@ def crawl_task(contest_id, row):
 		problem.persist(con)
 		task.persist(con)
 
+
 def crawl_tasks(contest_id):
 	tasks_page = requests.get('https://{0}.contest.atcoder.jp/assignments?lang=ja'.format(contest_id))
 	root = lxml.html.fromstring(tasks_page.text)
@@ -99,7 +106,8 @@ def crawl_tasks(contest_id):
 		try:
 			crawl_task(contest_id, task_elem)
 		except Exception as e:
-			raise print(str(e) + ' : ' + contest_id)
+			print('crawling tasks failed:' + str(e) + ' : ' + contest_id)
+
 
 def crawl_all_contest_tasks():
 	db = database.get_connection()
@@ -110,8 +118,62 @@ def crawl_all_contest_tasks():
 		time.sleep(1)
 		crawl_tasks(contest.id)
 
+
+def crawl_results(contest_id):
+	stands_page = requests.get('https://{0}.contest.atcoder.jp/standings'.format(contest_id))
+	root = lxml.html.fromstring(stands_page.text)
+	script = root.cssselect('div#pagination-standings + script')[0]
+	data_match = re.search(r'ATCODER\.standings\s*=\s*({.*});\s*$', script.text_content(), re.MULTILINE | re.DOTALL)
+	if data_match is None:
+		raise RuntimeError('no data:' + contest_id)
+
+	json_str = data_match.group(1)
+	for key in ['pagination', 'data', 'hidden_name', 'show_flag']:
+		json_str = re.sub(r'^\s*' + key + r':', '"{0}":'.format(key), json_str, flags = re.MULTILINE)
+	data_json = json.loads(json_str)['data']
+
+	db = database.get_connection()
+	try:
+		for user_data in data_json:
+			user_id = user_data['user_screen_name']
+			user = User(user_id)
+			user.persist(db)
+			for task in user_data['tasks']:
+				if 'failure' not in task:
+					continue
+				problem_id = task['task_id']
+				score = task['score']
+				failure = task['failure']
+				penalty = task['penalty']
+				elapsed = task['elapsed_time']
+				result = Result(contest_id, problem_id, user_id, score, failure, elapsed, penalty)
+				result.persist(db)
+	except Exception as e:
+		db.rollback()
+		raise e
+	else:
+		db.commit()
+	finally:
+		db.close()
+
+
+def crawl_all_contest_results():
+	db = database.get_connection()
+	with closing(db) as con:
+		contests = Contest.loadAll(db)
+	contests = contests[133:-1]
+
+	for contest in contests:
+		time.sleep(1)
+		print(contest.id)
+		try:
+			crawl_results(contest.id)
+		except Exception as e:
+			print('crawling tasks failed:' + str(e) + ' : ' + contest.id)
+
+
 def main():
-	crawl_all_contest_tasks()
+	crawl_all_contest_results()
 
 if __name__ == '__main__':
 	main()
