@@ -18,10 +18,11 @@ def get_connection():
 
 def create_tables(db_connection):
 	with closing(db_connection.cursor()) as cursor:
-		sql = '''CREATE TABLE contests(contest_id VARCHAR(255) PRIMARY KEY,
-		                               title VARCHAR(255) NOT NULL,
-		                               date DATETIME NOT NULL,
-		                               duration_sec INT NOT NULL);'''
+		sql = '''CREATE TABLE contests(
+		             contest_id VARCHAR(255) PRIMARY KEY,
+		             title VARCHAR(255) NOT NULL,
+		             date DATETIME NOT NULL,
+		             duration_sec INT NOT NULL);'''
 		cursor.execute(sql)
 
 		sql = '''CREATE TABLE users(
