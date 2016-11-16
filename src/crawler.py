@@ -39,7 +39,7 @@ def extract_contest_info(row):
 		duration_sec = int(duration_match.group(1)) * 3600 + int(duration_match.group(2)) * 60
 	else:
 		print('unknown duration:' + id + " " + title)
-		duration_sec = 100000000
+		duration_sec = 100000000 # some large value
 
 	return Contest(id, title, start_at, duration_sec)
 
