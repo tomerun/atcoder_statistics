@@ -18,7 +18,7 @@ from data_structure import *
 def extract_contest_info(row):
 	cells = row.findall('td')
 	start_at_str = cells[0].text_content()
-	start_at_match = re.match('(\d{4})/(\d{2})/(\d{2})\s*(\d{2}):(\d{2})', start_at_str)
+	start_at_match = re.match(r'(\d{4})/(\d{2})/(\d{2})\s*(\d{2}):(\d{2})', start_at_str)
 	if start_at_match:
 		start_at = datetime.datetime(year   = int(start_at_match.group(1)),
 		                             month  = int(start_at_match.group(2)),
@@ -30,11 +30,11 @@ def extract_contest_info(row):
 
 	link = cells[1].find('a')
 	url = link.get('href')
-	m = re.search('https://([^.]+)\.contest\.atcoder\.jp', url)
+	m = re.search(r'https://([^.]+)\.contest\.atcoder\.jp', url)
 	id = m.group(1)
 	title = link.text
 	duration_str = cells[2].text_content()
-	duration_match = re.match('(\d\d):(\d\d)', duration_str)
+	duration_match = re.match(r'(\d\d):(\d\d)', duration_str)
 	if duration_match:
 		duration_sec = int(duration_match.group(1)) * 3600 + int(duration_match.group(2)) * 60
 	else:
@@ -73,14 +73,14 @@ def crawl_task(contest_id, row):
 	title = cells[1].text_content()
 
 	link_url = cells[1].find('a').get('href')
-	link_match = re.match('/tasks/(.+)$', link_url)
+	link_match = re.match(r'/tasks/(.+)$', link_url)
 	if link_match:
 		path = link_match.group(1)
 	else:
 		raise RuntimeError('no task link')
 
 	submit_url = cells[4].find('a').get('href')
-	submit_match = re.match('/submit\?task_id=(\d+)$', submit_url)
+	submit_match = re.match(r'/submit\?task_id=(\d+)$', submit_url)
 	if submit_match:
 		problem_id = int(submit_match.group(1))
 	else:
@@ -99,7 +99,7 @@ def crawl_task(contest_id, row):
 
 
 def crawl_tasks(contest_id):
-	tasks_page = requests.get('https://{0}.contest.atcoder.jp/assignments?lang=ja'.format(contest_id))
+	tasks_page = requests.get(r'https://{0}.contest.atcoder.jp/assignments?lang=ja'.format(contest_id))
 	root = lxml.html.fromstring(tasks_page.text)
 	task_list = root.cssselect('div#outer-inner table tbody tr')
 	for task_elem in task_list:
