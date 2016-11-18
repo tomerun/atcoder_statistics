@@ -110,6 +110,17 @@ class TestDataStructure(unittest.TestCase):
 		self.assertEqual(2, len(tasks))
 		self.assertEqual({2, 5}, {task.problem_id for task in tasks})
 
+		task_of_contest = Task.of_contest('cf292', self.db)
+		self.assertEqual(1, len(task_of_contest))
+		self.assertEqual('cf292', task_of_contest[0].contest_id)
+		self.assertEqual(2, task_of_contest[0].problem_id)
+		self.assertEqual('A', task_of_contest[0].symbol)
+		self.assertEqual('cf292_a', task_of_contest[0].path)
+
+	def test_Task_get_url(self):
+		task = Task('agc000', '10000', 'A', 'agc_a')
+		self.assertEqual('http://agc000.contest.atcoder.jp/tasks/agc_a', task.get_url())
+
 	def test_TaskPoint(self):
 		c1 = Contest('cf292', 'codeforces 292', datetime.datetime(2016, 11, 13, 9, 0, 0), 60)
 		c2 = Contest('FCH 2015', 'Facebook Hacker Cup 2015', datetime.datetime(2018, 2, 10, 21, 0, 0), 100)

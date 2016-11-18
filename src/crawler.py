@@ -161,7 +161,6 @@ def crawl_all_contest_results():
 	db = database.get_connection()
 	with closing(db) as con:
 		contests = Contest.loadAll(db)
-	contests = contests[133:-1]
 
 	for contest in contests:
 		time.sleep(1)
@@ -172,8 +171,37 @@ def crawl_all_contest_results():
 			print('crawling tasks failed:' + str(e) + ' : ' + contest.id)
 
 
+def crawl_task_point(task):
+	task_page = requests.get(task.get_url())
+	root = lxml.html.fromstring(task_page.text)
+	statement = root.cssselect('#task-statement')[0].text_content()
+	match = re.search(r'配点\s*:\s*(\d+)', statement)
+	if match:
+		point = int(match.group(1))
+		task_point = TaskPoint(task.contest_id, task.problem_id, point * 100) # normalize point
+		db = database.get_connection()
+		db.autocommit(True)
+		with closing(db) as con:
+			task_point.persist(db)
+		print(task.contest_id + '-' + str(task.symbol) + ' has ' + str(point) + ' points.')
+	else:
+		print(task.contest_id + '-' + str(task.symbol) + ' has unknown points.')
+
+
+def crawl_task_point_of_contest(contest_id):
+	db = database.get_connection()
+	with closing(db) as con:
+		tasks = Task.of_contest(contest_id, db)
+	for task in tasks:
+		crawl_task_point(task)
+		time.sleep(0.5)
+
+
 def main():
-	crawl_all_contest_results()
+	contest_list = ['agc001','agc002','agc003','agc004','agc005','agc006','agc007','arc058','arc059','arc060','arc061','arc062','arc063','abc042','abc043','abc044','abc045','abc046','abc047','tekna1-2016-quala','tekna1-2016-qualb','tenka1-2016-final-open','code-festival-2016-quala','code-festival-2016-qualb','code-festival-2016-qualc','ddcc2016-qual']
+	for contest in contest_list:
+		crawl_task_point_of_contest(contest)
+
 
 if __name__ == '__main__':
 	main()

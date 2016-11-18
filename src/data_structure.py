@@ -112,6 +112,9 @@ class Task(namedtuple('Task', ['contest_id', 'problem_id', 'symbol', 'path'])):
 			cursor.execute('REPLACE INTO tasks VALUES(%s, %s, %s, %s);',
 			               (self.contest_id, self.problem_id, self.symbol, self.path))
 
+	def get_url(self):
+		return 'http://{0}.contest.atcoder.jp/tasks/{1}'.format(self.contest_id, self.path)
+
 	@staticmethod
 	def loadAll(db_connection):
 		with closing(db_connection.cursor()) as cursor:
@@ -133,6 +136,18 @@ class Task(namedtuple('Task', ['contest_id', 'problem_id', 'symbol', 'path'])):
 				return Task.create_from_row(row)
 			else:
 				return None
+
+	@staticmethod
+	def of_contest(contest_id, db_connection):
+		with closing(db_connection.cursor()) as cursor:
+			cursor.execute('SELECT * from tasks WHERE contest_id = %s;',
+			               (contest_id,))
+			ret = []
+			row = cursor.fetchone()
+			while row:
+				ret.append(Task.create_from_row(row))
+				row = cursor.fetchone()
+			return ret
 
 	@staticmethod
 	def create_from_row(row):
