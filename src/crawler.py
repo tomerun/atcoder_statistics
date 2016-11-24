@@ -198,7 +198,7 @@ def crawl_task_point_of_contest(contest_id):
 
 
 def main():
-	contest_list = ['agc001','agc002','agc003','agc004','agc005','agc006','agc007','arc058','arc059','arc060','arc061','arc062','arc063','abc042','abc043','abc044','abc045','abc046','abc047','tekna1-2016-quala','tekna1-2016-qualb','tenka1-2016-final-open','code-festival-2016-quala','code-festival-2016-qualb','code-festival-2016-qualc','ddcc2016-qual']
+	contest_list = ['tenka1-2016-quala','tenka1-2016-qualb']
 	for contest in contest_list:
 		crawl_task_point_of_contest(contest)
 
