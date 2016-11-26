@@ -7,7 +7,7 @@ new_contest_list = ['agc001','agc002','agc003','agc004','agc005','agc006','agc00
                     'arc058','arc059','arc060','arc061','arc062','arc063',
                     'abc042','abc043','abc044','abc045','abc046','abc047',
                     'tenka1-2016-quala','tenka1-2016-qualb','tenka1-2016-final-open',
-                    'code-festival-2016-quala','code-festival-2016-qualb','code-festival-2016-qualc',
+                    'code-festival-2016-quala','code-festival-2016-qualb','code-festival-2016-qualc', 'cf16-final', 'cf16-final-open'
                     'ddcc2016-qual']
 
 old_contest_list = ['arc001','arc002','arc003','arc004','arc005','arc006','arc007','arc008','arc009','arc010','arc011','arc012','arc013','arc014','arc015','arc016','arc017','arc018','arc019','arc020','arc021','arc022','arc023','arc024','arc025','arc026','arc027','arc028','arc029','arc030','arc031','arc032','arc033','arc034','arc035','arc036','arc037','arc038','arc039','arc040','arc041','arc042','arc043','arc044','arc045','arc046','arc047','arc048','arc049','arc050','arc051','arc052','arc053','arc054','arc055','arc056','arc057',
