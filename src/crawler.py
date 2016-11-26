@@ -14,19 +14,21 @@ import cssselect
 import database
 from data_structure import *
 
-
-def extract_contest_info(row):
-	cells = row.findall('td')
-	start_at_str = cells[0].text_content()
-	start_at_match = re.match(r'(\d{4})/(\d{2})/(\d{2})\s*(\d{2}):(\d{2})', start_at_str)
-	if start_at_match:
-		start_at = datetime.datetime(year   = int(start_at_match.group(1)),
-		                             month  = int(start_at_match.group(2)),
-		                             day    = int(start_at_match.group(3)),
-		                             hour   = int(start_at_match.group(4)),
-		                             minute = int(start_at_match.group(5)))
+def str_to_datetime(str):
+	match = re.match(r'(\d{4})/(\d{2})/(\d{2})\s*(\d{2}):(\d{2})', str)
+	if match:
+		return datetime.datetime(year   = int(match.group(1)),
+		                         month  = int(match.group(2)),
+		                         day    = int(match.group(3)),
+		                         hour   = int(match.group(4)),
+		                         minute = int(match.group(5)))
 	else:
-		raise RuntimeError('unknown start date')
+		raise RuntimeError('unknown date')
+
+
+def extract_contest_info_from_list(row):
+	cells = row.findall('td')
+	start_at = str_to_datetime(cells[0].text_content())
 
 	link = cells[1].find('a')
 	url = link.get('href')
@@ -44,27 +46,42 @@ def extract_contest_info(row):
 	return Contest(id, title, start_at, duration_sec)
 
 
-def crawl_contests_page(url):
+def crawl_contests_list_page(url):
 	page = requests.get('https://atcoder.jp' + url + '&lang=ja')
 	root = lxml.html.fromstring(page.text)
 	contest_list = root.cssselect('#main-div div.row > div:nth-of-type(2) table > tbody > tr')
-	return [extract_contest_info(contest_row) for contest_row in contest_list]
+	return [extract_contest_info_from_list(contest_row) for contest_row in contest_list]
 
 
-def crawl_contests():
+def crawl_contests_list():
 	top = requests.get('https://atcoder.jp/contest/archive?lang=ja')
 	root = lxml.html.fromstring(top.text)
 	page_list = root.cssselect('#main-div ul.pagination-sm > li')
 	contests = []
 	for page in page_list:
 		link = page.cssselect('a')[0]
-		contests = contests + crawl_contests_page(link.get('href'))
+		contests = contests + crawl_contests_list_page(link.get('href'))
 
 	db = database.get_connection()
 	db.autocommit(True)
 	with closing(db) as con:
 		for contest in contests:
 			contest.persist(con)
+
+def crawl_contest_info(contest_id):
+	tasks_page = requests.get(r'https://{0}.contest.atcoder.jp/?lang=ja'.format(contest_id))
+	root = lxml.html.fromstring(tasks_page.text)
+	title = root.cssselect('div#outer-inner div.insert-participant-box h1')[0].text_content()
+	times = root.cssselect('div.navbar-fixed-top a.brand span.bland-small time')
+	start_at = str_to_datetime(times[0].text_content())
+	end_at = str_to_datetime(times[1].text_content())
+	diff = end_at - start_at
+	contest = Contest(contest_id, title, start_at, diff.total_seconds())
+	print(contest)
+	db = database.get_connection()
+	db.autocommit(True)
+	with closing(db) as con:
+		contest.persist(con)
 
 
 def crawl_task(contest_id, row):
@@ -197,10 +214,17 @@ def crawl_task_point_of_contest(contest_id):
 		time.sleep(0.5)
 
 
+def crawl_contest_by_id(contest_id):
+	crawl_contest_info(contest_id)
+	crawl_tasks(contest_id)
+	crawl_task_point_of_contest(contest_id)
+	crawl_results(contest_id)
+
+
 def main():
-	contest_list = ['tenka1-2016-quala','tenka1-2016-qualb']
+	contest_list = ['cf16-final','cf16-final-open']
 	for contest in contest_list:
-		crawl_task_point_of_contest(contest)
+		crawl_contest_by_id(contest)
 
 
 if __name__ == '__main__':
