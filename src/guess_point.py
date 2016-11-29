@@ -2,10 +2,18 @@
 
 import itertools
 from sklearn.linear_model import RidgeCV
+from sklearn.svm import SVR
+from sklearn.ensemble import RandomForestRegressor
 import numpy as np
 import pandas as pd
 import database
 from data_structure import *
+
+def normalize(value):
+	return np.log(value / 10000.0)
+
+def denormalize(value):
+	return np.power(np.e, value) * 10000.0
 
 
 def main():
@@ -21,7 +29,7 @@ def main():
 	effective_cols = [name for user in effective_users for name in [user + '_T', user + '_F']]
 	print('test_user_count', len(effective_users))
 
-	expect = train_data['point']
+	expect = normalize(train_data['point'])
 	train_data = train_data[effective_cols]
 	test_data = test_data[effective_cols]
 
@@ -31,15 +39,24 @@ def main():
 	verify_selected = train_data[~mask]
 	verify_expect = expect[~mask]	
 
-	regressor = RidgeCV(alphas = (1, 3, 5, 10, 20, 30, 50, 100), cv = 3)
+	# regressor = RidgeCV(alphas = (0.1, 0.3, 0.5, 1, 3, 5, 10, 20), cv = 3)
+	# regressor.fit(train_selected, train_expect)
+	# print(list(regressor.coef_))
+	# print(regressor.intercept_)
+	# print(regressor.alpha_)
+
+	# regressor = SVR(C=5, epsilon=0.1)
+	# regressor.fit(train_selected, train_expect)
+
+	regressor = RandomForestRegressor(n_estimators=1000)
 	regressor.fit(train_selected, train_expect)
-	# print(regressor.cv_values_)
-	print(list(regressor.coef_))
-	print(regressor.intercept_)
-	print(regressor.alpha_)
+	print(regressor.estimators_)
+	print(regressor.feature_importances_)
+	print(regressor.n_features_)
+	print(regressor.n_outputs_)
 
 	train_result = regressor.predict(train_selected)
-	for e, r in zip(train_expect, train_result):
+	for e, r in zip(denormalize(train_expect), denormalize(train_result)):
 		print(e, r)
 	print()
 
@@ -54,10 +71,14 @@ def main():
 		tasks = Task.loadAll(con)
 	pid_to_task = {task.problem_id : task for task in tasks}
 
-	test_result = regressor.predict(test_data)
-	for pid, r in zip(test_pid, test_result):
-		task = pid_to_task[pid]
-		print(pid, task.contest_id, task.symbol, r)
+	test_result = denormalize(regressor.predict(test_data))
+	result = [(pid_to_task[pid].contest_id, pid_to_task[pid].symbol, pid, r) for pid, r in zip(test_pid, test_result)]
+	for res in sorted(result):
+		print(res[2], res[0], res[1], res[3])
+
+	# for pid, r in zip(test_pid, test_result):
+	# 	task = pid_to_task[pid]
+	# 	print(pid, task.contest_id, task.symbol, r)
 	print()
 
 if __name__ == '__main__':
