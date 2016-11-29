@@ -71,17 +71,27 @@ def get_results(contest_ids):
 			cursor.execute(sql)
 			return cursor.fetchall()
 
-def output_train_csv():
+def output_csv(train):
 	user_list = get_user_list()
 	user_idx = {user_list[i] : i for i in range(len(user_list))}
 	user_results = {user_id : {} for user_id in user_list}
-	task_points = {tp['problem_id'] : tp['point'] for tp in get_task_point_list(new_contest_list)}
-	for result in get_results(new_contest_list):
+
+	if train:
+		contest_list = new_contest_list
+		task_points = {tp['problem_id'] : tp['point'] for tp in get_task_point_list(contest_list)}
+	else:
+		contest_list = old_contest_list
+		# assuming points of all problems in old contests are 100
+		task_points = {task['problem_id'] : 10000 for task in get_task_list(contest_list)}
+
+	for result in get_results(contest_list):
 		uid = result['user_id']
+		if uid not in user_list:
+			continue
 		pid = result['problem_id']
-		success = result['score'] == task_points[pid]
+		success = result['score'] >= task_points[pid]   # care for  'full score is 101 pts' case
 		user_results[uid][pid] = success
-	for contest_id in new_contest_list:
+	for contest_id in contest_list:
 		tasks = sorted(get_task_list([contest_id]), key = lambda x : x['symbol'])
 		task_prob_ids = [x['problem_id'] for x in tasks]
 		for user_id, results in user_results.items():
@@ -93,10 +103,16 @@ def output_train_csv():
 				elif tried:
 					results[pid] = False   # tried and no submit
 
+	# print header
 	print('source', end = '')
 	for user in user_list:
 		print(',{0}_T,{0}_F'.format(user), end = '')
-	print(',point')
+	if train:
+		print(',point')
+	else:
+		print()
+
+	# print body
 	for pid, point in task_points.items():
 		print(pid, end='')
 		for uid in user_list:
@@ -107,33 +123,14 @@ def output_train_csv():
 				print(',1,0', end='')
 			else:
 				print(',0,1', end='')
-		print(',' + str(point))
+		if train:
+			print(',' + str(point))
+		else:
+			print()
 
-def output_test_csv():
-	user_list = get_user_list()
-	user_idx = {user_list[i] : i for i in range(len(user_list))}
-	print('source', end = '')
-	for user in user_list:
-		print(',{0}_T,{0}_F'.format(user), end = '')
-	print()
-	task_list = get_task_list(old_contest_list)
-	for task in task_list:
-		print(task['problem_id'], end = '')
-		binary_list = [False] * (len(user_list) * 2)
-		results = get_result_list(task['problem_id'])
-		for result in results:
-			user_id = result['user_id']
-			if user_id in user_idx:
-				idx = user_idx[user_id] * 2
-				if result['score'] < 10000:
-					idx += 1
-				binary_list[idx] = True
-		for b in binary_list:
-			print(',', 1 if b else 0, sep = '', end = '')
-		print()
 
 def main():
-	output_train_csv()
+	output_csv(train = False)
 
 if __name__ == '__main__':
 	main()
