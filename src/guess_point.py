@@ -17,14 +17,15 @@ def main():
 	# extract users having many features in test_data
 	col_sum = test_data.sum(0)
 	user_count = col_sum.rolling(2).sum()[1:-1:2].astype(int)
-	effective_users = [l[0:-2] for l, v in user_count.iteritems() if v > 0]
+	effective_users = [l[0:-2] for l, v in user_count.iteritems() if v >= 20]
 	effective_cols = [name for user in effective_users for name in [user + '_T', user + '_F']]
+	print('test_user_count', len(effective_users))
 
 	expect = train_data['point']
 	train_data = train_data[effective_cols]
 	test_data = test_data[effective_cols]
 
-	mask = np.random.rand(len(train_data)) < 0.6
+	mask = np.random.rand(len(train_data)) <= 1.0
 	train_selected = train_data[mask]
 	train_expect = expect[mask]
 	verify_selected = train_data[~mask]
@@ -42,10 +43,10 @@ def main():
 		print(e, r)
 	print()
 
-	verify_result = regressor.predict(verify_selected)
-	for e, r in zip(verify_expect, verify_result):
-		print(e, r)
-	print()
+	# verify_result = regressor.predict(verify_selected)
+	# for e, r in zip(verify_expect, verify_result):
+	# 	print(e, r)
+	# print()
 
 
 	db = database.get_connection()
