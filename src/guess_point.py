@@ -1,12 +1,15 @@
 # coding: utf-8
 
 import itertools
+
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import RidgeCV
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVR
 import numpy as np
 import pandas as pd
+from jinja2 import Environment, FileSystemLoader, Template
+
 import database
 from data_structure import *
 
@@ -21,11 +24,13 @@ def denormalize(value):
 
 def guess(train_data, test_data):
 	# extract users having many features in test_data
+	train_data = train_data.drop('source', 1)
+	test_data = test_data.drop('source', 1)
 	col_sum = test_data.sum(0)
 	user_count = col_sum.rolling(2).sum()[1:-1:2].astype(int)
 	effective_users = [l[0:-2] for l, v in user_count.iteritems() if v >= 100]
 	effective_cols = [name for user in effective_users for name in [user + '_T', user + '_F']]
-	print('test_user_count', len(effective_users))
+	# print('test_user_count', len(effective_users))
 
 	expect = normalize(train_data['point'])
 	train_data = train_data[effective_cols]
@@ -59,8 +64,8 @@ def guess(train_data, test_data):
 	# regressor = GridSearchCV(RandomForestRegressor(), tuned_parameters, cv=4)
 
 	regressor.fit(train_selected, train_expect)
-	print(regressor.best_params_)
-	print(regressor.best_score_)
+	# print(regressor.best_params_)
+	# print(regressor.best_score_)
 
 	# train_result = regressor.predict(train_selected)
 	# for e, r in zip(denormalize(train_expect), denormalize(train_result)):
@@ -75,27 +80,33 @@ def guess(train_data, test_data):
 	return denormalize(regressor.predict(test_data))
 
 
-def main():
-	train_data = pd.read_csv('train.csv')
-	train_pid = train_data['source']
-	train_data = train_data.drop('source', 1)
-
-	test_data = pd.read_csv('test.csv')
+def output(test_data, test_result):
 	test_pid = test_data['source']
-	test_data = test_data.drop('source', 1)
-
-	test_result = guess(train_data, test_data)
-
 	db = database.get_connection()
 	with closing(db) as con:
-		tasks = Task.loadAll(con)
-	pid_to_task = {task.problem_id : task for task in tasks if task.contest_id.startswith('arc') or task.contest_id.startswith('abc')}
+		all_tasks = Task.loadAll(con)
+		all_problems = Problem.loadAll(con)
 
-	result = [(pid_to_task[pid].contest_id, pid_to_task[pid].symbol, pid, r) for pid, r in zip(test_pid, test_result)]
-	for res in sorted(result):
-		print(res[2], res[0], res[1], int(round(res[3] / 100)))
-	print()
+	pid_to_task = {task.problem_id : task for task in all_tasks if task.contest_id.startswith('arc') or task.contest_id.startswith('abc')}
+	pid_to_title = {prob.id : prob.title for prob in all_problems}
 
+	results = sorted([(pid_to_task[pid], pid_to_title[pid], pid, guessed_score) for pid, guessed_score in zip(test_pid, test_result)])
+
+	env = Environment(loader=FileSystemLoader('./', encoding='utf8'))
+	template = env.get_template('template.html')
+	html = template.render(results=results)
+	print(html)
+
+	# for task, pid, guessed_score in sorted(zip(tasks, test_pid, test_result)):
+	# 	print(pid, task.contest_id, task.symbol, int(round(guessed_score / 100)))
+	# print()
+
+
+def main():
+	train_data = pd.read_csv('train.csv')
+	test_data = pd.read_csv('test.csv')
+	test_result = guess(train_data, test_data)
+	output(test_data, test_result)
 
 
 if __name__ == '__main__':
