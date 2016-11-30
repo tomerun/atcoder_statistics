@@ -97,10 +97,6 @@ def output(test_data, test_result):
 	html = template.render(results=results)
 	print(html)
 
-	# for task, pid, guessed_score in sorted(zip(tasks, test_pid, test_result)):
-	# 	print(pid, task.contest_id, task.symbol, int(round(guessed_score / 100)))
-	# print()
-
 
 def main():
 	train_data = pd.read_csv('train.csv')
