@@ -19,14 +19,7 @@ def denormalize(value):
 	return np.power(np.e, value) * 10000.0
 
 
-def main():
-	train_data = pd.read_csv('train.csv')
-	train_pid = train_data['source']
-	train_data = train_data.drop('source', 1)
-	test_data = pd.read_csv('test.csv')
-	test_pid = test_data['source']
-	test_data = test_data.drop('source', 1)
-
+def guess(train_data, test_data):
 	# extract users having many features in test_data
 	col_sum = test_data.sum(0)
 	user_count = col_sum.rolling(2).sum()[1:-1:2].astype(int)
@@ -69,26 +62,41 @@ def main():
 	print(regressor.best_params_)
 	print(regressor.best_score_)
 
-	train_result = regressor.predict(train_selected)
-	for e, r in zip(denormalize(train_expect), denormalize(train_result)):
-		print(int(round(e / 100)), int(round(r / 100)))
-	print()
-
+	# train_result = regressor.predict(train_selected)
+	# for e, r in zip(denormalize(train_expect), denormalize(train_result)):
+	# 	print(int(round(e / 100)), int(round(r / 100)))
+	# print()
+	# 
 	# verify_result = regressor.predict(verify_selected)
 	# for e, r in zip(denormalize(verify_expect), denormalize(verify_result)):
 	# 	print(int(round(e / 100)), int(round(r / 100)))
 	# print()
+
+	return denormalize(regressor.predict(test_data))
+
+
+def main():
+	train_data = pd.read_csv('train.csv')
+	train_pid = train_data['source']
+	train_data = train_data.drop('source', 1)
+
+	test_data = pd.read_csv('test.csv')
+	test_pid = test_data['source']
+	test_data = test_data.drop('source', 1)
+
+	test_result = guess(train_data, test_data)
 
 	db = database.get_connection()
 	with closing(db) as con:
 		tasks = Task.loadAll(con)
 	pid_to_task = {task.problem_id : task for task in tasks if task.contest_id.startswith('arc') or task.contest_id.startswith('abc')}
 
-	test_result = denormalize(regressor.predict(test_data))
 	result = [(pid_to_task[pid].contest_id, pid_to_task[pid].symbol, pid, r) for pid, r in zip(test_pid, test_result)]
 	for res in sorted(result):
 		print(res[2], res[0], res[1], int(round(res[3] / 100)))
 	print()
+
+
 
 if __name__ == '__main__':
 	main()
