@@ -1,0 +1,19 @@
+table#main td,th {
+	text-align: center;
+}
+
+table#main td:last-child,th:last-child {
+	text-align: left;
+}
+
+table#main td:first-child {
+	vertical-align: middle;
+}
+
+table#main tr:nth-child(4n + 1) td {
+	border-top-width: 2px;
+}
+
+table#main tbody tr:nth-child(8n + 1),tr:nth-child(8n + 2),tr:nth-child(8n + 3),tr:nth-child(8n + 4) {
+	background-color: rgb(249, 249, 249);
+}
