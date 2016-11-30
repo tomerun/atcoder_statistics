@@ -39,8 +39,6 @@ def main():
 	test_data = test_data[effective_cols]
 
 	mask = np.random.rand(len(train_data)) >= 1.0
-	# is_cf_2016 = lambda x : 2128 <= x and x <= 2137
-	# mask = train_pid.apply(is_cf_2016)
 	train_selected = train_data[~mask]
 	train_expect = expect[~mask]
 	verify_selected = train_data[mask]
