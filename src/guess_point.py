@@ -84,7 +84,7 @@ def main():
 	db = database.get_connection()
 	with closing(db) as con:
 		tasks = Task.loadAll(con)
-	pid_to_task = {task.problem_id : task for task in tasks}
+	pid_to_task = {task.problem_id : task for task in tasks if task.contest_id.startswith('arc') or task.contest_id.startswith('abc')}
 
 	test_result = denormalize(regressor.predict(test_data))
 	result = [(pid_to_task[pid].contest_id, pid_to_task[pid].symbol, pid, r) for pid, r in zip(test_pid, test_result)]
