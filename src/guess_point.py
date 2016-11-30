@@ -92,6 +92,12 @@ def output(test_data, test_result):
 
 	results = sorted([(pid_to_task[pid], pid_to_title[pid], pid, guessed_score) for pid, guessed_score in zip(test_pid, test_result)])
 
+	# CSV output
+	# print('contest', 'symbol', 'title', 'estimated_score', sep=',')
+	# for task, title, pid, guessed_score in results:
+	# 	print(task.contest_id, task.symbol, '"' + title + '"', int(round(guessed_score / 100)), sep=',')
+
+	# HTML output
 	env = Environment(loader=FileSystemLoader('./', encoding='utf8'))
 	template = env.get_template('template.html')
 	html = template.render(results=results)
