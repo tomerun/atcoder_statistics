@@ -13,7 +13,6 @@ new_contest_list = ['agc001','agc002','agc003','agc004','agc005','agc006','agc00
 old_contest_list = ['arc001','arc002','arc003','arc004','arc005','arc006','arc007','arc008','arc009','arc010','arc011','arc012','arc013','arc014','arc015','arc016','arc017','arc018','arc019','arc020','arc021','arc022','arc023','arc024','arc025','arc026','arc027','arc028','arc029','arc030','arc031','arc032','arc033','arc034','arc035','arc036','arc037','arc038','arc039','arc040','arc041','arc042','arc043','arc044','arc045','arc046','arc047','arc048','arc049','arc050','arc051','arc052','arc053','arc054','arc055','arc056','arc057',
                     'abc001','abc002','abc003','abc004','abc005','abc006','abc007','abc008','abc009','abc010','abc011','abc012','abc013','abc014','abc015','abc016','abc017','abc018','abc019','abc020','abc021','abc022','abc023','abc024','abc025','abc026','abc027','abc028','abc029','abc030','abc031','abc032','abc033','abc034','abc035','abc036','abc037','abc038','abc039','abc040','abc041']
 
-
 def get_user_list():
 	sql = "SELECT DISTINCT user_id FROM results WHERE contest_id = '{0}'".format(new_contest_list[0])
 	for contest_id in new_contest_list[1:-1]:
@@ -28,7 +27,7 @@ def get_user_list():
 def get_task_list(contest_ids):
 	sql =  "SELECT problem_id, symbol FROM tasks"
 	sql += "  WHERE (contest_id = '{0}'".format(contest_ids[0])
-	for contest_id in contest_ids[1:-1]:
+	for contest_id in contest_ids[1:]:
 		sql += "      OR contest_id = '{0}'".format(contest_id)
 	sql += "  ) ORDER BY problem_id;"
 	db = database.get_connection()
