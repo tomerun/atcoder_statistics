@@ -28,7 +28,7 @@ def guess(train_data, test_data):
 	test_data = test_data.drop('source', 1)
 	col_sum = test_data.sum(0)
 	user_count = col_sum.rolling(2).sum()[1:-1:2].astype(int)
-	effective_users = [l[0:-2] for l, v in user_count.iteritems() if v >= 100]
+	effective_users = [l[0:-2] for l, v in user_count.iteritems() if v >= 100 and l in train_data]
 	effective_cols = [name for user in effective_users for name in [user + '_T', user + '_F']]
 	# print('test_user_count', len(effective_users))
 
