@@ -1,0 +1,192 @@
+#-*- coding:utf-8 -*-
+SQL_UP = u"""
+-- -----------------------------------------------------
+-- Table `contests`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `contests` (
+  `contest_id` VARCHAR(255) NOT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `date` DATETIME NOT NULL,
+  `duration_sec` INT(11) NOT NULL,
+  PRIMARY KEY (`contest_id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8;
+
+
+-- -----------------------------------------------------
+-- Table `problems`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `problems` (
+  `problem_id` INT(11) NOT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`problem_id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8;
+
+
+-- -----------------------------------------------------
+-- Table `users`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `users` (
+  `user_id` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`user_id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8;
+
+
+-- -----------------------------------------------------
+-- Table `results`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `results` (
+  `contest_id` VARCHAR(255) NOT NULL,
+  `problem_id` INT(11) NOT NULL,
+  `user_id` VARCHAR(255) NOT NULL,
+  `score` INT(11) NOT NULL,
+  `failure` INT(11) NOT NULL,
+  `elapsed` INT(11) NOT NULL,
+  `penalty` INT(11) NOT NULL,
+  PRIMARY KEY (`contest_id`, `problem_id`, `user_id`),
+  INDEX `user_id` (`user_id` ASC),
+  INDEX `problem_id_idx` (`problem_id` ASC),
+  CONSTRAINT `results__contest_id`
+    FOREIGN KEY (`contest_id`)
+    REFERENCES `contests` (`contest_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `results__problem_id`
+    FOREIGN KEY (`problem_id`)
+    REFERENCES `problems` (`problem_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `results__user_id`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `users` (`user_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8;
+
+
+-- -----------------------------------------------------
+-- Table `task_points`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `task_points` (
+  `contest_id` VARCHAR(255) NOT NULL,
+  `problem_id` INT(11) NOT NULL,
+  `point` INT(11) NOT NULL,
+  PRIMARY KEY (`contest_id`, `problem_id`),
+  INDEX `problem_id_idx` (`problem_id` ASC),
+  CONSTRAINT `task_points__contest_id`
+    FOREIGN KEY (`contest_id`)
+    REFERENCES `contests` (`contest_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `task_points__problem_id`
+    FOREIGN KEY (`problem_id`)
+    REFERENCES `problems` (`problem_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8;
+
+
+-- -----------------------------------------------------
+-- Table `tasks`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tasks` (
+  `contest_id` VARCHAR(255) NOT NULL,
+  `problem_id` INT(11) NOT NULL,
+  `symbol` VARCHAR(255) NOT NULL,
+  `path` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`contest_id`, `problem_id`),
+  INDEX `problem_id_idx` (`problem_id` ASC),
+  CONSTRAINT `tasks__contest_id`
+    FOREIGN KEY (`contest_id`)
+    REFERENCES `contests` (`contest_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `tasks__problem_id`
+    FOREIGN KEY (`problem_id`)
+    REFERENCES `problems` (`problem_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8;
+
+
+-- -----------------------------------------------------
+-- Table `user_affiliations`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `user_affiliations` (
+  `user_id` VARCHAR(255) NOT NULL,
+  `affiliation` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `user_affiliations__user_id`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `users` (`user_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8;
+
+
+-- -----------------------------------------------------
+-- Table `user_birth_years`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `user_birth_years` (
+  `user_id` VARCHAR(255) NOT NULL,
+  `birth_year` INT(11) NOT NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `user_birth_years__user_id`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `users` (`user_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8;
+
+
+-- -----------------------------------------------------
+-- Table `user_countries`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `user_countries` (
+  `user_id` VARCHAR(255) NOT NULL,
+  `country` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `user_countries__user_id`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `users` (`user_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8;
+
+
+-- -----------------------------------------------------
+-- Table `user_twitter_ids`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `user_twitter_ids` (
+  `user_id` VARCHAR(255) NOT NULL,
+  `twitter_id` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `user_twitter_ids__user_id`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `users` (`user_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8;
+"""
+
+SQL_DOWN = u"""
+DROP TABLE `contests`;
+DROP TABLE `problems`;
+DROP TABLE `users`;
+DROP TABLE `results`;
+DROP TABLE `task_points`;
+DROP TABLE `tasks`;
+DROP TABLE `user_affiliations`;
+DROP TABLE `user_birth_years`;
+DROP TABLE `user_countries`;
+DROP TABLE `user_twitter_ids`;
+"""

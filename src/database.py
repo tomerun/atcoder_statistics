@@ -9,10 +9,10 @@ import os
 def get_connection():
 	with open(os.path.join(os.path.dirname(__file__), 'config.json'), 'r') as config_file:
 		config = json.load(config_file)
-	return MySQLdb.connect(host='localhost',
+	return MySQLdb.connect(host=config['DB_host'],
 	                       user=config['DB_user'],
 	                       passwd=config['DB_pass'],
-	                       db='atcoder',
+	                       db=config['DB_name'],
 	                       charset='utf8',
 	                       cursorclass=MySQLdb.cursors.DictCursor)
 
