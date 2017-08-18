@@ -1,6 +1,9 @@
 .DS_Store
-config.json
+config/development.yml
+config/production.yml
+config/test.yml
 *.pyc
 __pycache__
+.ipynb_checkpoints/
 *.sublime-workspace
 *.sublime-project

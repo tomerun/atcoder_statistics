@@ -13,6 +13,7 @@ class TestDataStructure(unittest.TestCase):
 		self.db = MySQLdb.connect(host='localhost',
 		                          user='test',
 		                          db='test',
+		                          password='test',
 		                          charset='utf8',
 		                          cursorclass=MySQLdb.cursors.DictCursor)
 		create_tables(self.db)

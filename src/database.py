@@ -3,16 +3,15 @@
 from contextlib import closing
 import MySQLdb
 import MySQLdb.cursors
-import json
 import os
+from config import Config
 
 def get_connection():
-	with open(os.path.join(os.path.dirname(__file__), 'config.json'), 'r') as config_file:
-		config = json.load(config_file)
-	return MySQLdb.connect(host=config['DB_host'],
-	                       user=config['DB_user'],
-	                       passwd=config['DB_pass'],
-	                       db=config['DB_name'],
+	config = Config.load()
+	return MySQLdb.connect(host=config['db']['host'],
+	                       user=config['db']['user'],
+	                       passwd=config['db']['pass'],
+	                       db=config['db']['name'],
 	                       charset='utf8',
 	                       cursorclass=MySQLdb.cursors.DictCursor)
 
