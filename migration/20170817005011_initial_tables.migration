@@ -179,14 +179,14 @@ DEFAULT CHARACTER SET = utf8;
 """
 
 SQL_DOWN = u"""
-DROP TABLE `contests`;
-DROP TABLE `problems`;
-DROP TABLE `users`;
-DROP TABLE `results`;
-DROP TABLE `task_points`;
-DROP TABLE `tasks`;
-DROP TABLE `user_affiliations`;
-DROP TABLE `user_birth_years`;
-DROP TABLE `user_countries`;
 DROP TABLE `user_twitter_ids`;
+DROP TABLE `user_countries`;
+DROP TABLE `user_birth_years`;
+DROP TABLE `user_affiliations`;
+DROP TABLE `tasks`;
+DROP TABLE `task_points`;
+DROP TABLE `results`;
+DROP TABLE `users`;
+DROP TABLE `problems`;
+DROP TABLE `contests`;
 """
