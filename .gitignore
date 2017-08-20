@@ -2,6 +2,7 @@
 config/development.yml
 config/production.yml
 config/test.yml
+log/*.log
 *.pyc
 __pycache__
 .ipynb_checkpoints/
