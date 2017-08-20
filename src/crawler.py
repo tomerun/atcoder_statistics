@@ -35,6 +35,7 @@ class Crawler:
 
 	def __enter__(self):
 		self.session = requests.Session()
+		self.session.headers.update({'User-Agent': 'AtCoder Statistics Crawler', 'From': 'tomerunmail@gmail.com'})
 		return self
 
 	def __exit__(self, exc_type, exc_value, traceback):
