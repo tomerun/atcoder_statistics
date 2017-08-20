@@ -5,6 +5,7 @@ import json
 import re
 import datetime
 import time
+import logging
 
 import requests
 import lxml.html
@@ -25,7 +26,35 @@ def str_to_datetime(str):
 	else:
 		raise RuntimeError('unknown date')
 
+
 class Crawler:
+
+	def __init__(self, interval = 0.5):
+		self.logger = logging.getLogger('crawler')
+		self.interval_secs = interval
+
+	def __enter__(self):
+		self.session = requests.Session()
+		return self
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		if self.session:
+			self.session.close()
+
+	def get(self, url):
+		self.logger.info("get:%s", url)
+		res = self.session.get(url)
+		if res.ok:
+			return lxml.html.fromstring(res.text)
+		else:
+			self.logger.error("get error:%s", url)
+			raise RuntimeError(f'error occured in crawling {url}')
+
+
+class Scraper:
+
+	def __init__(self, crawler):
+		self.crawler = crawler
 
 	def extract_contest_info_from_list(self, row):
 		cells = row.findall('td')
@@ -48,15 +77,13 @@ class Crawler:
 
 
 	def crawl_contests_list_page(self, url):
-		page = self._get(f'https://atcoder.jp{url}&lang=ja')
-		root = lxml.html.fromstring(page.text)
+		root = self.crawler.get(f'https://atcoder.jp{url}&lang=ja')
 		contest_list = root.cssselect('#main-div div.row > div:nth-of-type(2) table > tbody > tr')
 		return [self.extract_contest_info_from_list(contest_row) for contest_row in contest_list]
 
 
 	def crawl_contests_list(self):
-		top = self._get('https://atcoder.jp/contest/archive?lang=ja')
-		root = lxml.html.fromstring(top.text)
+		root = self.crawler.get('https://atcoder.jp/contest/archive?lang=ja')
 		page_list = root.cssselect('#main-div ul.pagination-sm > li')
 		contests = []
 		for page in page_list:
@@ -71,8 +98,7 @@ class Crawler:
 
 
 	def crawl_contest_info(self, contest_id):
-		tasks_page = self._get(f'https://{contest_id}.contest.atcoder.jp/?lang=ja')
-		root = lxml.html.fromstring(tasks_page.text)
+		root = self.crawler.get(f'https://{contest_id}.contest.atcoder.jp/?lang=ja')
 		title = root.cssselect('div#outer-inner div.insert-participant-box h1')[0].text_content()
 		times = root.cssselect('div.navbar-fixed-top a.brand span.bland-small time')
 		start_at = str_to_datetime(times[0].text_content())
@@ -118,8 +144,7 @@ class Crawler:
 
 
 	def crawl_tasks(self, contest_id):
-		tasks_page = self._get(f'https://{contest_id}.contest.atcoder.jp/assignments?lang=ja')
-		root = lxml.html.fromstring(tasks_page.text)
+		root = self.crawler.get(f'https://{contest_id}.contest.atcoder.jp/assignments?lang=ja')
 		task_list = root.cssselect('div#outer-inner table tbody tr')
 		for task_elem in task_list:
 			try:
@@ -139,8 +164,7 @@ class Crawler:
 
 
 	def crawl_results(self, contest_id):
-		stands_page = self._get(f'https://{contest_id}.contest.atcoder.jp/standings')
-		root = lxml.html.fromstring(stands_page.text)
+		root = self.crawler.get(f'https://{contest_id}.contest.atcoder.jp/standings')
 		script = root.cssselect('div#pagination-standings + script')[0]
 		data_match = re.search(r'ATCODER\.standings\s*=\s*({.*});\s*$', script.text_content(), re.MULTILINE | re.DOTALL)
 		if data_match is None:
@@ -191,8 +215,7 @@ class Crawler:
 
 
 	def crawl_task_point(self, task):
-		task_page = requests.get(task.get_url())
-		root = lxml.html.fromstring(task_page.text)
+		root = self.crawler.get(task.get_url())
 		statement = root.cssselect('#task-statement')[0].text_content()
 		match = re.search(r'配点\s*:\s*(\d+)', statement)
 		if match:
@@ -223,15 +246,20 @@ class Crawler:
 		self.crawl_results(contest_id)
 
 
-	def _get(self, url):
-		return requests.get(url)
-
 
 def main():
+	logger = logging.getLogger('crawler')
+	logger.setLevel(logging.INFO)
+	handler = logging.FileHandler('log/crawler.log')
+	formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+	handler.setFormatter(formatter)
+	logger.addHandler(handler)
+
 	contest_list = ['abc070']
-	crawler = Crawler()
-	for contest in contest_list:
-		crawler.crawl_contest_by_id(contest)
+	with Crawler() as crawler:
+		scraper = Scraper(crawler)
+		for contest in contest_list:
+			scraper.crawl_contest_by_id(contest)
 
 
 if __name__ == '__main__':
