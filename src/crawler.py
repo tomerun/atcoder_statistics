@@ -3,7 +3,7 @@ import os
 import sys
 import json
 import re
-import datetime
+from datetime import datetime as dt, timedelta
 import time
 import logging
 
@@ -18,11 +18,11 @@ from data_structure import *
 def str_to_datetime(str):
 	match = re.match(r'(\d{4})/(\d{2})/(\d{2})\s*(\d{2}):(\d{2})', str)
 	if match:
-		return datetime.datetime(year   = int(match.group(1)),
-		                         month  = int(match.group(2)),
-		                         day    = int(match.group(3)),
-		                         hour   = int(match.group(4)),
-		                         minute = int(match.group(5)))
+		return dt(year   = int(match.group(1)),
+		          month  = int(match.group(2)),
+		          day    = int(match.group(3)),
+		          hour   = int(match.group(4)),
+		          minute = int(match.group(5)))
 	else:
 		raise RuntimeError('unknown date')
 
@@ -32,6 +32,7 @@ class Crawler:
 	def __init__(self, interval = 0.5):
 		self.logger = logging.getLogger('crawler')
 		self.interval_secs = interval
+		self.prev_request_time = dt.now() - timedelta(seconds = interval * 2)
 
 	def __enter__(self):
 		self.session = requests.Session()
@@ -43,8 +44,13 @@ class Crawler:
 			self.session.close()
 
 	def get(self, url):
+		wait_until = self.prev_request_time + timedelta(seconds = self.interval_secs)
+		wait_secs = (wait_until - dt.now()).total_seconds()
+		if wait_secs > 0:
+			time.sleep(wait_secs)
 		self.logger.info("get:%s", url)
 		res = self.session.get(url)
+		self.prev_request_time = dt.now()
 		if res.ok:
 			return lxml.html.fromstring(res.text)
 		else:
@@ -237,7 +243,6 @@ class Scraper:
 			tasks = Task.of_contest(contest_id, db)
 		for task in tasks:
 			self.crawl_task_point(task)
-			time.sleep(0.5)
 
 
 	def crawl_contest_by_id(self, contest_id):
