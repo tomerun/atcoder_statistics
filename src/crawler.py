@@ -52,10 +52,14 @@ class Crawler:
 		res = self.session.get(url)
 		self.prev_request_time = dt.now()
 		if res.ok:
-			return lxml.html.fromstring(res.text)
+			return res.text
 		else:
 			self.logger.error("get error:%s", url)
 			raise RuntimeError(f'error occured in crawling {url}')
+
+	def get_html(self, url):
+		text = self.get(url)
+		return lxml.html.fromstring(text)
 
 
 class Scraper:
@@ -84,13 +88,13 @@ class Scraper:
 
 
 	def crawl_contests_list_page(self, url):
-		root = self.crawler.get(f'https://atcoder.jp{url}&lang=ja')
+		root = self.crawler.get_html(f'https://atcoder.jp{url}&lang=ja')
 		contest_list = root.cssselect('#main-div div.row > div:nth-of-type(2) table > tbody > tr')
 		return [self.extract_contest_info_from_list(contest_row) for contest_row in contest_list]
 
 
 	def crawl_contests_list(self):
-		root = self.crawler.get('https://atcoder.jp/contest/archive?lang=ja')
+		root = self.crawler.get_html('https://atcoder.jp/contest/archive?lang=ja')
 		page_list = root.cssselect('#main-div ul.pagination-sm > li')
 		contests = []
 		for page in page_list:
@@ -105,7 +109,7 @@ class Scraper:
 
 
 	def crawl_contest_info(self, contest_id):
-		root = self.crawler.get(f'https://{contest_id}.contest.atcoder.jp/?lang=ja')
+		root = self.crawler.get_html(f'https://{contest_id}.contest.atcoder.jp/?lang=ja')
 		title = root.cssselect('div#outer-inner div.insert-participant-box h1')[0].text_content()
 		times = root.cssselect('div.navbar-fixed-top a.brand span.bland-small time')
 		start_at = str_to_datetime(times[0].text_content())
@@ -151,7 +155,7 @@ class Scraper:
 
 
 	def crawl_tasks(self, contest_id):
-		root = self.crawler.get(f'https://{contest_id}.contest.atcoder.jp/assignments?lang=ja')
+		root = self.crawler.get_html(f'https://{contest_id}.contest.atcoder.jp/assignments?lang=ja')
 		task_list = root.cssselect('div#outer-inner table tbody tr')
 		for task_elem in task_list:
 			try:
@@ -171,30 +175,24 @@ class Scraper:
 
 
 	def crawl_results(self, contest_id):
-		root = self.crawler.get(f'https://{contest_id}.contest.atcoder.jp/standings')
-		script = root.cssselect('div#pagination-standings + script')[0]
-		data_match = re.search(r'ATCODER\.standings\s*=\s*({.*});\s*$', script.text_content(), re.MULTILINE | re.DOTALL)
-		if data_match is None:
-			raise RuntimeError('no data:' + contest_id)
-
-		json_str = data_match.group(1)
-		for key in ['pagination', 'data', 'hidden_name', 'show_flag']:
-			json_str = re.sub(r'^\s*' + key + r':', '"{0}":'.format(key), json_str, flags = re.MULTILINE)
-		data_json = json.loads(json_str)['data']
+		json_str = self.crawler.get(f'https://{contest_id}.contest.atcoder.jp/standings/json')
+		data_json = json.loads(json_str)['response']
 
 		db = database.get_connection()
 		try:
-			for user_data in data_json:
+			for user_data in data_json[1:-1]:
 				user_id = user_data['user_screen_name']
 				user = User(user_id)
 				user.persist(db)
-				for task in user_data['tasks']:
+				tasks = user_data['tasks']
+				for i in range(len(tasks)):
+					task = tasks[i]
 					if 'failure' not in task:
 						continue
 					problem_id = task['task_id']
 					score = task['score']
 					failure = task['failure']
-					penalty = task['penalty']
+					penalty = 0#task['penalty']
 					elapsed = task['elapsed_time']
 					result = Result(contest_id, problem_id, user_id, score, failure, elapsed, penalty)
 					result.persist(db)
@@ -222,7 +220,7 @@ class Scraper:
 
 
 	def crawl_task_point(self, task):
-		root = self.crawler.get(task.get_url())
+		root = self.crawler.get_html(task.get_url())
 		statement = root.cssselect('#task-statement')[0].text_content()
 		match = re.search(r'配点\s*:\s*(\d+)', statement)
 		if match:
@@ -261,11 +259,12 @@ def main():
 	handler.setFormatter(formatter)
 	logger.addHandler(handler)
 
-	contest_list = ['abc070']
+	contest_list = ['abc001']
 	with Crawler() as crawler:
 		scraper = Scraper(crawler)
 		for contest in contest_list:
-			scraper.crawl_contest_by_id(contest)
+			scraper.crawl_results(contest)
+			# scraper.crawl_contest_by_id(contest)
 
 
 if __name__ == '__main__':
