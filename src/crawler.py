@@ -12,7 +12,6 @@ import lxml.html
 import lxml
 import cssselect
 
-import database
 from data_structure import *
 
 def str_to_datetime(str):
@@ -67,7 +66,7 @@ class Scraper:
 	def __init__(self, crawler):
 		self.crawler = crawler
 
-	def extract_contest_info_from_list(self, row):
+	def _extract_contest_info_from_list(self, row):
 		cells = row.findall('td')
 		start_at = str_to_datetime(cells[0].text_content())
 
@@ -84,46 +83,38 @@ class Scraper:
 			print(f'unknown duration:{id} {title}')
 			duration_sec = 100000000 # some large value
 
-		return Contest(id, title, start_at, duration_sec)
+		return Contest(contest_id=id, title=title, date=start_at, duration_sec=duration_sec)
 
 
-	def crawl_contests_list_page(self, url):
+	def _crawl_contests_list_page(self, url):
 		root = self.crawler.get_html(f'https://atcoder.jp{url}&lang=ja')
 		contest_list = root.cssselect('#main-div div.row > div:nth-of-type(2) table > tbody > tr')
-		return [self.extract_contest_info_from_list(contest_row) for contest_row in contest_list]
+		return [self._extract_contest_info_from_list(contest_row) for contest_row in contest_list]
 
 
-	def crawl_contests_list(self):
+	def crawl_contests_list(self, session):
 		root = self.crawler.get_html('https://atcoder.jp/contest/archive?lang=ja')
 		page_list = root.cssselect('#main-div ul.pagination-sm > li')
 		contests = []
 		for page in page_list:
 			link = page.cssselect('a')[0]
-			contests = contests + crawl_contests_list_page(link.get('href'))
-
-		db = database.get_connection()
-		db.autocommit(True)
-		with closing(db) as con:
-			for contest in contests:
-				contest.persist(con)
+			contests = contests + _crawl_contests_list_page(link.get('href'))
+		session.add_all(contests)
 
 
-	def crawl_contest_info(self, contest_id):
+	def crawl_contest_info(self, contest_id, session):
 		root = self.crawler.get_html(f'https://{contest_id}.contest.atcoder.jp/?lang=ja')
 		title = root.cssselect('div#outer-inner div.insert-participant-box h1')[0].text_content()
 		times = root.cssselect('div.navbar-fixed-top a.brand span.bland-small time')
 		start_at = str_to_datetime(times[0].text_content())
 		end_at = str_to_datetime(times[1].text_content())
 		diff = end_at - start_at
-		contest = Contest(contest_id, title, start_at, diff.total_seconds())
+		contest = Contest(contest_id=contest_id, title=title, date=start_at, duration_sec=diff.total_seconds())
 		print(contest)
-		db = database.get_connection()
-		db.autocommit(True)
-		with closing(db) as con:
-			contest.persist(con)
+		session.add(contest)
 
 
-	def crawl_task(self, contest_id, row):
+	def _crawl_task(self, contest_id, row, session):
 		cells = row.cssselect('td')
 		symbol = cells[0].text_content()
 		title = cells[1].text_content()
@@ -142,113 +133,84 @@ class Scraper:
 		else:
 			raise RuntimeError('no submit link')
 
-		problem = Problem(problem_id, title)
-		task = Task(contest_id, problem_id, symbol, path)
-
+		problem = Problem(problem_id=problem_id, title=title)
+		task = Task(contest_id=contest_id, problem_id=problem_id, symbol=symbol, path=path)
 		print(problem)
 		print(task)
-		db = database.get_connection()
-		db.autocommit(True)
-		with closing(db) as con:
-			problem.persist(con)
-			task.persist(con)
+		session.add(problem)
+		session.add(task)
 
 
-	def crawl_tasks(self, contest_id):
+	def crawl_tasks(self, contest_id, session):
 		root = self.crawler.get_html(f'https://{contest_id}.contest.atcoder.jp/assignments?lang=ja')
 		task_list = root.cssselect('div#outer-inner table tbody tr')
 		for task_elem in task_list:
 			try:
-				self.crawl_task(contest_id, task_elem)
+				self._crawl_task(contest_id, task_elem, session)
 			except Exception as e:
 				print(f'crawling tasks failed:{str(e)} : {contest_id}')
 
 
-	def crawl_all_contest_tasks(self):
-		db = database.get_connection()
-		with closing(db) as con:
-			contests = Contest.loadAll(db)
-
-		for contest in contests:
-			time.sleep(1)
-			self.crawl_tasks(contest.id)
+	def crawl_all_contest_tasks(self, session):
+		for contest in session.query(Contest).all():
+			self.crawl_tasks(contest.contest_id, session)
 
 
-	def crawl_results(self, contest_id):
+	def crawl_results(self, contest_id, session):
 		json_str = self.crawler.get(f'https://{contest_id}.contest.atcoder.jp/standings/json')
 		data_json = json.loads(json_str)['response']
 
-		db = database.get_connection()
-		try:
-			for user_data in data_json[1:-1]:
-				user_id = user_data['user_screen_name']
-				user = User(user_id)
-				user.persist(db)
-				tasks = user_data['tasks']
-				for i in range(len(tasks)):
-					task = tasks[i]
-					if 'failure' not in task:
-						continue
-					problem_id = task['task_id']
-					score = task['score']
-					failure = task['failure']
-					penalty = 0#task['penalty']
-					elapsed = task['elapsed_time']
-					result = Result(contest_id, problem_id, user_id, score, failure, elapsed, penalty)
-					result.persist(db)
-		except Exception as e:
-			db.rollback()
-			raise e
-		else:
-			db.commit()
-		finally:
-			db.close()
+		for user_data in data_json[1:-1]:
+			user_id = user_data['user_screen_name']
+			user = User(user_id=user_id)
+			session.add(user)
+			tasks = user_data['tasks']
+			for i in range(len(tasks)):
+				task = tasks[i]
+				if 'failure' not in task:
+					continue
+				problem_id = task['task_id']
+				score = task['score']
+				failure = task['failure']
+				elapsed = task['elapsed_time']
+				result = Result(contest_id=contest_id, problem_id=problem_id, user_id=user_id,
+				                score=score, failure=failure, elapsed=elapsed)
+				session.add(result)
 
 
-	def crawl_all_contest_results(self):
-		db = database.get_connection()
-		with closing(db) as con:
-			contests = Contest.loadAll(db)
-
-		for contest in contests:
-			time.sleep(1)
+	def crawl_all_contest_results(self, session):
+		for contest in session.query(Contest).all():
 			print(contest.id)
 			try:
-				self.crawl_results(contest.id)
+				self.crawl_results(contest.id, session)
 			except Exception as e:
 				print('crawling tasks failed:' + str(e) + ' : ' + contest.id)
 
 
-	def crawl_task_point(self, task):
+	def crawl_task_point(self, task, session):
 		root = self.crawler.get_html(task.get_url())
 		statement = root.cssselect('#task-statement')[0].text_content()
 		match = re.search(r'配点\s*:\s*(\d+)', statement)
 		if match:
 			point = int(match.group(1))
-			task_point = TaskPoint(task.contest_id, task.problem_id, point * 100) # normalize point
-			db = database.get_connection()
-			db.autocommit(True)
-			with closing(db) as con:
-				task_point.persist(db)
+			task_point = TaskPoint(contest_id=task.contest_id, problem_id=task.problem_id, point=point * 100) # normalize point
+			session.add(task_point)
 			print(task.contest_id + '-' + str(task.symbol) + ' has ' + str(point) + ' points.')
 		else:
 			print(task.contest_id + '-' + str(task.symbol) + ' has unknown points.')
 
 
-	def crawl_task_point_of_contest(self, contest_id):
-		db = database.get_connection()
-		with closing(db) as con:
-			tasks = Task.of_contest(contest_id, db)
+	def crawl_task_point_of_contest(self, contest_id, session):
+		tasks = session.query(Task).filter(Task.contest_id == contest_id)
 		for task in tasks:
-			self.crawl_task_point(task)
+			self.crawl_task_point(task, session)
 
 
-	def crawl_contest_by_id(self, contest_id):
-		self.crawl_contest_info(contest_id)
-		self.crawl_tasks(contest_id)
-		self.crawl_task_point_of_contest(contest_id)
-		self.crawl_results(contest_id)
-
+	def crawl_contest_by_id(self, contest_id, session):
+		self.crawl_contest_info(contest_id, session)
+		self.crawl_tasks(contest_id, session)
+		self.crawl_task_point_of_contest(contest_id, session)
+		self.crawl_results(contest_id, session)
 
 
 def main():
@@ -263,9 +225,15 @@ def main():
 	with Crawler() as crawler:
 		scraper = Scraper(crawler)
 		for contest in contest_list:
-			scraper.crawl_results(contest)
-			# scraper.crawl_contest_by_id(contest)
-
+			session = Session()
+			try:
+				# scraper.crawl_results(contest, session)
+				scraper.crawl_contest_by_id(contest, session)
+			except Exception as e:
+				session.rollback()
+				raise e
+			finally:
+				session.close()
 
 if __name__ == '__main__':
 	main()
