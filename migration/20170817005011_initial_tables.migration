@@ -44,7 +44,6 @@ CREATE TABLE IF NOT EXISTS `results` (
   `score` INT(11) NOT NULL,
   `failure` INT(11) NOT NULL,
   `elapsed` INT(11) NOT NULL,
-  `penalty` INT(11) NOT NULL,
   PRIMARY KEY (`contest_id`, `problem_id`, `user_id`),
   INDEX `user_id` (`user_id` ASC),
   INDEX `problem_id_idx` (`problem_id` ASC),
@@ -61,29 +60,6 @@ CREATE TABLE IF NOT EXISTS `results` (
   CONSTRAINT `results__user_id`
     FOREIGN KEY (`user_id`)
     REFERENCES `users` (`user_id`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB
-DEFAULT CHARACTER SET = utf8;
-
-
--- -----------------------------------------------------
--- Table `task_points`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `task_points` (
-  `contest_id` VARCHAR(255) NOT NULL,
-  `problem_id` INT(11) NOT NULL,
-  `point` INT(11) NOT NULL,
-  PRIMARY KEY (`contest_id`, `problem_id`),
-  INDEX `problem_id_idx` (`problem_id` ASC),
-  CONSTRAINT `task_points__contest_id`
-    FOREIGN KEY (`contest_id`)
-    REFERENCES `contests` (`contest_id`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  CONSTRAINT `task_points__problem_id`
-    FOREIGN KEY (`problem_id`)
-    REFERENCES `problems` (`problem_id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB
@@ -108,6 +84,24 @@ CREATE TABLE IF NOT EXISTS `tasks` (
   CONSTRAINT `tasks__problem_id`
     FOREIGN KEY (`problem_id`)
     REFERENCES `problems` (`problem_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8;
+
+
+-- -----------------------------------------------------
+-- Table `task_points`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `task_points` (
+  `contest_id` VARCHAR(255) NOT NULL,
+  `problem_id` INT(11) NOT NULL,
+  `point` INT(11) NOT NULL,
+  PRIMARY KEY (`contest_id`, `problem_id`),
+  INDEX `problem_id_idx` (`problem_id` ASC),
+  CONSTRAINT `task_points__task`
+    FOREIGN KEY (contest_id, problem_id)
+    REFERENCES tasks(contest_id, problem_id)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB
@@ -183,8 +177,8 @@ DROP TABLE `user_twitter_ids`;
 DROP TABLE `user_countries`;
 DROP TABLE `user_birth_years`;
 DROP TABLE `user_affiliations`;
-DROP TABLE `tasks`;
 DROP TABLE `task_points`;
+DROP TABLE `tasks`;
 DROP TABLE `results`;
 DROP TABLE `users`;
 DROP TABLE `problems`;

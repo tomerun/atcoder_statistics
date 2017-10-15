@@ -69,9 +69,9 @@ class Result(Base):
 	contest_id = Column(String, ForeignKey('contests.contest_id'), primary_key=True)
 	problem_id = Column(Integer, ForeignKey('problems.problem_id'), primary_key=True)
 	user_id = Column(String, ForeignKey('users.user_id'), primary_key=True)
-	score = Column(Integer)
+	score = Column(Integer) # x100 from the "real" score
 	failure = Column(Integer)
-	elapsed = Column(Integer)
+	elapsed = Column(Integer) # in seconds
 
 	contest = relationship('Contest', backref='results')
 	problem = relationship('Problem', backref='results')
