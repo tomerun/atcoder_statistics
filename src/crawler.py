@@ -157,6 +157,25 @@ class Scraper:
 			self.crawl_tasks(contest.contest_id, db_session)
 
 
+	def crawl_task_point(self, task, db_session):
+		root = self.crawler.get_html(task.get_url())
+		statement = root.cssselect('#task-statement')[0].text_content()
+		match = re.search(r'配点\s*:\s*(\d+)', statement)
+		if match:
+			point = int(match.group(1))
+			task_point = TaskPoint(contest_id=task.contest_id, problem_id=task.problem_id, point=point * 100) # normalize point
+			db_session.add(task_point)
+			logger.info(task.contest_id + '-' + str(task.symbol) + ' has ' + str(point) + ' points.')
+		else:
+			logger.warn(task.contest_id + '-' + str(task.symbol) + ' has unknown points.')
+
+
+	def crawl_task_point_of_contest(self, contest_id, db_session):
+		tasks = db_session.query(Task).filter(Task.contest_id == contest_id)
+		for task in tasks:
+			self.crawl_task_point(task, db_session)
+
+
 	def crawl_results(self, contest_id, db_session):
 		json_str = self.crawler.get(f'https://{contest_id}.contest.atcoder.jp/standings/json')
 		data_json = json.loads(json_str)['response']
@@ -186,25 +205,6 @@ class Scraper:
 				self.crawl_results(contest.id, db_session)
 			except Exception as e:
 				logger.error('crawling tasks failed:' + str(e) + ' : ' + contest.id)
-
-
-	def crawl_task_point(self, task, db_session):
-		root = self.crawler.get_html(task.get_url())
-		statement = root.cssselect('#task-statement')[0].text_content()
-		match = re.search(r'配点\s*:\s*(\d+)', statement)
-		if match:
-			point = int(match.group(1))
-			task_point = TaskPoint(contest_id=task.contest_id, problem_id=task.problem_id, point=point * 100) # normalize point
-			db_session.add(task_point)
-			logger.info(task.contest_id + '-' + str(task.symbol) + ' has ' + str(point) + ' points.')
-		else:
-			logger.warn(task.contest_id + '-' + str(task.symbol) + ' has unknown points.')
-
-
-	def crawl_task_point_of_contest(self, contest_id, db_session):
-		tasks = db_session.query(Task).filter(Task.contest_id == contest_id)
-		for task in tasks:
-			self.crawl_task_point(task, db_session)
 
 
 	def crawl_contest_by_id(self, contest_id, db_session):
