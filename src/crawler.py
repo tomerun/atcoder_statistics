@@ -14,6 +14,8 @@ import cssselect
 
 from data_structure import *
 
+logger = logging.getLogger('crawler')
+
 def str_to_datetime(str):
 	match = re.match(r'(\d{4})/(\d{2})/(\d{2})\s*(\d{2}):(\d{2})', str)
 	if match:
@@ -29,31 +31,30 @@ def str_to_datetime(str):
 class Crawler:
 
 	def __init__(self, interval = 0.5):
-		self.logger = logging.getLogger('crawler')
 		self.interval_secs = interval
 		self.prev_request_time = dt.now() - timedelta(seconds = interval * 2)
 
 	def __enter__(self):
-		self.session = requests.Session()
-		self.session.headers.update({'User-Agent': 'AtCoder Statistics Crawler', 'From': 'tomerunmail@gmail.com'})
+		self.http_session = requests.Session()
+		self.http_session.headers.update({'User-Agent': 'AtCoder Statistics Crawler', 'From': 'tomerunmail@gmail.com'})
 		return self
 
 	def __exit__(self, exc_type, exc_value, traceback):
-		if self.session:
-			self.session.close()
+		if self.http_session:
+			self.http_session.close()
 
 	def get(self, url):
 		wait_until = self.prev_request_time + timedelta(seconds = self.interval_secs)
 		wait_secs = (wait_until - dt.now()).total_seconds()
 		if wait_secs > 0:
 			time.sleep(wait_secs)
-		self.logger.info("get:%s", url)
-		res = self.session.get(url)
+		logger.info("get:%s", url)
+		res = self.http_session.get(url)
 		self.prev_request_time = dt.now()
 		if res.ok:
 			return res.text
 		else:
-			self.logger.error("get error:%s", url)
+			logger.error("get error:%s", url)
 			raise RuntimeError(f'error occured in crawling {url}')
 
 	def get_html(self, url):
@@ -80,7 +81,7 @@ class Scraper:
 		if duration_match:
 			duration_sec = int(duration_match.group(1)) * 3600 + int(duration_match.group(2)) * 60
 		else:
-			print(f'unknown duration:{id} {title}')
+			logger.warn(f'unknown duration:{id} {title}')
 			duration_sec = 100000000 # some large value
 
 		return Contest(contest_id=id, title=title, date=start_at, duration_sec=duration_sec)
@@ -92,17 +93,17 @@ class Scraper:
 		return [self._extract_contest_info_from_list(contest_row) for contest_row in contest_list]
 
 
-	def crawl_contests_list(self, session):
+	def crawl_contests_list(self, db_session):
 		root = self.crawler.get_html('https://atcoder.jp/contest/archive?lang=ja')
 		page_list = root.cssselect('#main-div ul.pagination-sm > li')
 		contests = []
 		for page in page_list:
 			link = page.cssselect('a')[0]
 			contests = contests + _crawl_contests_list_page(link.get('href'))
-		session.add_all(contests)
+		db_session.add_all(contests)
 
 
-	def crawl_contest_info(self, contest_id, session):
+	def crawl_contest_info(self, contest_id, db_session):
 		root = self.crawler.get_html(f'https://{contest_id}.contest.atcoder.jp/?lang=ja')
 		title = root.cssselect('div#outer-inner div.insert-participant-box h1')[0].text_content()
 		times = root.cssselect('div.navbar-fixed-top a.brand span.bland-small time')
@@ -110,11 +111,11 @@ class Scraper:
 		end_at = str_to_datetime(times[1].text_content())
 		diff = end_at - start_at
 		contest = Contest(contest_id=contest_id, title=title, date=start_at, duration_sec=diff.total_seconds())
-		print(contest)
-		session.add(contest)
+		logger.info(contest)
+		db_session.add(contest)
 
 
-	def _crawl_task(self, contest_id, row, session):
+	def _crawl_task(self, contest_id, row, db_session):
 		cells = row.cssselect('td')
 		symbol = cells[0].text_content()
 		title = cells[1].text_content()
@@ -135,35 +136,35 @@ class Scraper:
 
 		problem = Problem(problem_id=problem_id, title=title)
 		task = Task(contest_id=contest_id, problem_id=problem_id, symbol=symbol, path=path)
-		print(problem)
-		print(task)
-		session.add(problem)
-		session.add(task)
+		logger.info(problem)
+		logger.info(task)
+		db_session.add(problem)
+		db_session.add(task)
 
 
-	def crawl_tasks(self, contest_id, session):
+	def crawl_tasks(self, contest_id, db_session):
 		root = self.crawler.get_html(f'https://{contest_id}.contest.atcoder.jp/assignments?lang=ja')
 		task_list = root.cssselect('div#outer-inner table tbody tr')
 		for task_elem in task_list:
 			try:
-				self._crawl_task(contest_id, task_elem, session)
+				self._crawl_task(contest_id, task_elem, db_session)
 			except Exception as e:
-				print(f'crawling tasks failed:{str(e)} : {contest_id}')
+				logger.error(f'crawling tasks failed:{str(e)} : {contest_id}')
 
 
-	def crawl_all_contest_tasks(self, session):
-		for contest in session.query(Contest).all():
-			self.crawl_tasks(contest.contest_id, session)
+	def crawl_all_contest_tasks(self, db_session):
+		for contest in db_session.query(Contest).all():
+			self.crawl_tasks(contest.contest_id, db_session)
 
 
-	def crawl_results(self, contest_id, session):
+	def crawl_results(self, contest_id, db_session):
 		json_str = self.crawler.get(f'https://{contest_id}.contest.atcoder.jp/standings/json')
 		data_json = json.loads(json_str)['response']
 
 		for user_data in data_json[1:-1]:
 			user_id = user_data['user_screen_name']
 			user = User(user_id=user_id)
-			session.add(user)
+			db_session.add(user)
 			tasks = user_data['tasks']
 			for i in range(len(tasks)):
 				task = tasks[i]
@@ -175,46 +176,45 @@ class Scraper:
 				elapsed = task['elapsed_time']
 				result = Result(contest_id=contest_id, problem_id=problem_id, user_id=user_id,
 				                score=score, failure=failure, elapsed=elapsed)
-				session.add(result)
+				db_session.add(result)
 
 
-	def crawl_all_contest_results(self, session):
-		for contest in session.query(Contest).all():
-			print(contest.id)
+	def crawl_all_contest_results(self, db_session):
+		for contest in db_session.query(Contest).all():
+			logger.info(contest.id)
 			try:
-				self.crawl_results(contest.id, session)
+				self.crawl_results(contest.id, db_session)
 			except Exception as e:
-				print('crawling tasks failed:' + str(e) + ' : ' + contest.id)
+				logger.error('crawling tasks failed:' + str(e) + ' : ' + contest.id)
 
 
-	def crawl_task_point(self, task, session):
+	def crawl_task_point(self, task, db_session):
 		root = self.crawler.get_html(task.get_url())
 		statement = root.cssselect('#task-statement')[0].text_content()
 		match = re.search(r'配点\s*:\s*(\d+)', statement)
 		if match:
 			point = int(match.group(1))
 			task_point = TaskPoint(contest_id=task.contest_id, problem_id=task.problem_id, point=point * 100) # normalize point
-			session.add(task_point)
-			print(task.contest_id + '-' + str(task.symbol) + ' has ' + str(point) + ' points.')
+			db_session.add(task_point)
+			logger.info(task.contest_id + '-' + str(task.symbol) + ' has ' + str(point) + ' points.')
 		else:
-			print(task.contest_id + '-' + str(task.symbol) + ' has unknown points.')
+			logger.warn(task.contest_id + '-' + str(task.symbol) + ' has unknown points.')
 
 
-	def crawl_task_point_of_contest(self, contest_id, session):
-		tasks = session.query(Task).filter(Task.contest_id == contest_id)
+	def crawl_task_point_of_contest(self, contest_id, db_session):
+		tasks = db_session.query(Task).filter(Task.contest_id == contest_id)
 		for task in tasks:
-			self.crawl_task_point(task, session)
+			self.crawl_task_point(task, db_session)
 
 
-	def crawl_contest_by_id(self, contest_id, session):
-		self.crawl_contest_info(contest_id, session)
-		self.crawl_tasks(contest_id, session)
-		self.crawl_task_point_of_contest(contest_id, session)
-		self.crawl_results(contest_id, session)
+	def crawl_contest_by_id(self, contest_id, db_session):
+		self.crawl_contest_info(contest_id, db_session)
+		self.crawl_tasks(contest_id, db_session)
+		self.crawl_task_point_of_contest(contest_id, db_session)
+		self.crawl_results(contest_id, db_session)
 
 
 def main():
-	logger = logging.getLogger('crawler')
 	logger.setLevel(logging.INFO)
 	handler = logging.FileHandler('log/crawler.log')
 	formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -225,15 +225,15 @@ def main():
 	with Crawler() as crawler:
 		scraper = Scraper(crawler)
 		for contest in contest_list:
-			session = Session()
+			db_session = Session()
 			try:
-				# scraper.crawl_results(contest, session)
-				scraper.crawl_contest_by_id(contest, session)
+				# scraper.crawl_results(contest, db_session)
+				scraper.crawl_contest_by_id(contest, db_session)
 			except Exception as e:
-				session.rollback()
+				db_session.rollback()
 				raise e
 			finally:
-				session.close()
+				db_session.close()
 
 if __name__ == '__main__':
 	main()
