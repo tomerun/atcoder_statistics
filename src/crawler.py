@@ -177,22 +177,22 @@ class Scraper:
 
 
 	def crawl_results(self, contest_id, db_session):
-		json_str = self.crawler.get(f'https://{contest_id}.contest.atcoder.jp/standings/json')
-		data_json = json.loads(json_str)['response']
-
-		for user_data in data_json[1:-1]:
-			user_id = user_data['user_screen_name']
+		json_str = self.crawler.get(f'https://beta.atcoder.jp/contests/{contest_id}/standings/json')
+		users = json.loads(json_str)['StandingsData']
+		tasks = {t.path: t.problem_id for t in db_session.query(Task).filter(Task.contest_id == contest_id)}
+		for user_data in users:
+			results = user_data["TaskResults"]
+			if not results:
+				continue
+			user_id = user_data['UserScreenName']
 			user = User(user_id=user_id)
 			db_session.add(user)
-			tasks = user_data['tasks']
-			for i in range(len(tasks)):
-				task = tasks[i]
-				if 'failure' not in task:
-					continue
-				problem_id = task['task_id']
-				score = task['score']
-				failure = task['failure']
-				elapsed = task['elapsed_time']
+			for task_name in results:
+				result = results[task_name];
+				problem_id = tasks[task_name]
+				score = result['Score']
+				failure = result['Penalty']
+				elapsed = result['Elapsed'] // 1000000000
 				result = Result(contest_id=contest_id, problem_id=problem_id, user_id=user_id,
 				                score=score, failure=failure, elapsed=elapsed)
 				db_session.add(result)
@@ -233,6 +233,7 @@ def main():
 				db_session.rollback()
 				raise e
 			finally:
+				db_session.commit()
 				db_session.close()
 
 if __name__ == '__main__':
