@@ -1,8 +1,4 @@
 # coding: utf-8
-import os
-import sys
-import datetime
-from contextlib import closing
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, ForeignKeyConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -14,67 +10,66 @@ engine = create_engine(f'mysql://{config["user"]}:{config["pass"]}@{config["host
 Session = sessionmaker(bind=engine)
 Base = declarative_base()
 
-class Contest(Base):
-	__tablename__ = 'contests'
 
-	contest_id = Column(String, primary_key=True)
-	title = Column(String)
-	date = Column(DateTime)
-	duration_sec = Column(Integer)
+class Contest(Base):
+  __tablename__ = 'contests'
+
+  contest_id = Column(String, primary_key=True)
+  title = Column(String)
+  date = Column(DateTime)
+  duration_sec = Column(Integer)
 
 
 class User(Base):
-	__tablename__ = 'users'
+  __tablename__ = 'users'
 
-	user_id = Column(String, primary_key=True)
+  user_id = Column(String, primary_key=True)
 
 
 class Problem(Base):
-	__tablename__ = 'problems'
+  __tablename__ = 'problems'
 
-	problem_id = Column(Integer, primary_key=True)
-	title = Column(String)
+  problem_id = Column(Integer, primary_key=True)
+  title = Column(String)
 
 
 class Task(Base):
-	__tablename__ = 'tasks'
+  __tablename__ = 'tasks'
 
-	contest_id = Column(String, ForeignKey('contests.contest_id'), primary_key=True)
-	problem_id = Column(Integer, ForeignKey('problems.problem_id'), primary_key=True)
-	symbol = Column(String)
-	path = Column(String)
+  contest_id = Column(String, ForeignKey('contests.contest_id'), primary_key=True)
+  problem_id = Column(Integer, ForeignKey('problems.problem_id'), primary_key=True)
+  symbol = Column(String)
+  path = Column(String)
 
-	contest = relationship('Contest', backref='tasks')
-	problem = relationship('Problem')
+  contest = relationship('Contest', backref='tasks')
+  problem = relationship('Problem')
 
-	def get_url(self):
-		return f'http://{self.contest_id}.contest.atcoder.jp/tasks/{self.path}'
+  def get_url(self):
+    return f'http://{self.contest_id}.contest.atcoder.jp/tasks/{self.path}'
 
 
 class TaskPoint(Base):
-	__tablename__ = 'task_points'
+  __tablename__ = 'task_points'
 
-	contest_id = Column(String, primary_key=True)
-	problem_id = Column(Integer, primary_key=True)
-	point = Column(Integer)
+  contest_id = Column(String, primary_key=True)
+  problem_id = Column(Integer, primary_key=True)
+  point = Column(Integer)
 
-	__table_args__ = (ForeignKeyConstraint(['contest_id', 'problem_id'], ['tasks.contest_id', 'tasks.problem_id']), {})
+  __table_args__ = (ForeignKeyConstraint(['contest_id', 'problem_id'], ['tasks.contest_id', 'tasks.problem_id']), {})
 
-	task = relationship('Task', backref='task_point')
+  task = relationship('Task', backref='task_point')
 
 
 class Result(Base):
-	__tablename__ = 'results'
+  __tablename__ = 'results'
 
-	contest_id = Column(String, ForeignKey('contests.contest_id'), primary_key=True)
-	problem_id = Column(Integer, ForeignKey('problems.problem_id'), primary_key=True)
-	user_id = Column(String, ForeignKey('users.user_id'), primary_key=True)
-	score = Column(Integer) # x100 from the "real" score
-	failure = Column(Integer)
-	elapsed = Column(Integer) # in seconds
+  contest_id = Column(String, ForeignKey('contests.contest_id'), primary_key=True)
+  problem_id = Column(Integer, ForeignKey('problems.problem_id'), primary_key=True)
+  user_id = Column(String, ForeignKey('users.user_id'), primary_key=True)
+  score = Column(Integer)  # x100 from the "real" score
+  failure = Column(Integer)
+  elapsed = Column(Integer)  # in seconds
 
-	contest = relationship('Contest', backref='results')
-	problem = relationship('Problem', backref='results')
-	user = relationship('User', backref='results')
-
-
+  contest = relationship('Contest', backref='results')
+  problem = relationship('Problem', backref='results')
+  user = relationship('User', backref='results')
