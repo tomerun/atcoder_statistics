@@ -130,13 +130,16 @@ class Scraper:
     json_str = self.crawler.get(f'https://beta.atcoder.jp/contests/{contest_id}/standings/json')
     users = json.loads(json_str)['StandingsData']
     tasks = {t.path: t.problem_id for t in db_session.query(Task).filter(Task.contest_id == contest_id)}
+    user_ids = {i.user_id for i in db_session.query(User.user_id)}
     for user_data in users:
       results = user_data["TaskResults"]
       if not results:
         continue
       user_id = user_data['UserScreenName']
-      user = User(user_id=user_id)
-      db_session.add(user)
+      if user_id not in user_ids:
+        user = User(user_id=user_id)
+        db_session.add(user)
+        user_ids.add(user_id)
       for task_name in results:
         result = results[task_name]
         problem_id = tasks[task_name]
