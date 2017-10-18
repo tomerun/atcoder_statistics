@@ -26,13 +26,13 @@ class Crawler:
     if self.http_session:
       self.http_session.close()
 
-  def get(self, url):
+  def get(self, url, headers=None):
     wait_until = self.prev_request_time + timedelta(seconds=self.interval_secs)
     wait_secs = (wait_until - dt.now()).total_seconds()
     if wait_secs > 0:
       time.sleep(wait_secs)
     logger.info("get:%s", url)
-    res = self.http_session.get(url)
+    res = self.http_session.get(url, headers=headers)
     self.prev_request_time = dt.now()
     if res.ok:
       return res.text
@@ -40,6 +40,6 @@ class Crawler:
       logger.error("get error:%s", url)
       raise RuntimeError(f'error occured in crawling {url}')
 
-  def get_html(self, url):
-    text = self.get(url)
+  def get_html(self, url, headers=None):
+    text = self.get(url, headers)
     return lxml.html.fromstring(text)
