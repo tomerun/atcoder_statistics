@@ -10,13 +10,7 @@ from data_structure import *
 class TestDataStructure(unittest.TestCase):
 
 	def setUp(self):
-		self.db = MySQLdb.connect(host='localhost',
-		                          user='test',
-		                          db='test',
-		                          password='test',
-		                          charset='utf8',
-		                          cursorclass=MySQLdb.cursors.DictCursor)
-		create_tables(self.db)
+		pass
 
 	def tearDown(self):
 		try:
