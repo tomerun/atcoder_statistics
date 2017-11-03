@@ -11,7 +11,7 @@ import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 
 import database
-from data_structure import Problem, Task
+from model import Problem, Task
 
 
 def normalize(value):

@@ -5,7 +5,7 @@ import MySQLdb
 import MySQLdb.cursors
 from database import create_tables
 from contextlib import closing
-from data_structure import *
+from model import *
 
 class TestDataStructure(unittest.TestCase):
 

@@ -7,7 +7,7 @@ import requests
 import lxml.html
 import lxml
 
-logger = logging.getLogger('crawler')
+logger = logging.getLogger(__name__)
 
 
 class Crawler:

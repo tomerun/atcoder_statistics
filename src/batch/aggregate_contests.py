@@ -1,7 +1,7 @@
 # coding: utf-8
 import re
 
-from crawler import Crawler
+from batch.crawler import Crawler
 
 
 def main():

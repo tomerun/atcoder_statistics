@@ -5,8 +5,8 @@ from datetime import datetime as dt
 import logging
 
 
-from crawler import Crawler, logger
-from data_structure import Contest, User, Problem, Task, TaskPoint, Result, Session
+from batch.crawler import Crawler, logger
+from model import Contest, User, Problem, Task, TaskPoint, Result, Session
 
 
 def str_to_datetime(str):
@@ -167,7 +167,7 @@ class Scraper:
 
 def main():
   logger.setLevel(logging.INFO)
-  handler = logging.FileHandler('log/crawler.log')
+  handler = logging.FileHandler('../log/crawler.log')
   formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
   handler.setFormatter(formatter)
   logger.addHandler(handler)
