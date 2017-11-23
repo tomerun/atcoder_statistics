@@ -1,0 +1,7 @@
+Flask
+Jinja2
+lxml
+mysqlclient
+requests
+simple-db-migrate
+SQLAlchemy
