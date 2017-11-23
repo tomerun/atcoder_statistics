@@ -3,6 +3,8 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Foreign
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
+from datetime import timedelta
+
 from config import Config
 
 config = Config.load()['db']
@@ -18,6 +20,10 @@ class Contest(Base):
   title = Column(String)
   date = Column(DateTime)
   duration_sec = Column(Integer)
+
+  @property
+  def end_date(self):
+    return self.date + timedelta(seconds=self.duration_sec)
 
 
 class User(Base):
@@ -73,3 +79,6 @@ class Result(Base):
   contest = relationship('Contest', backref='results')
   problem = relationship('Problem', backref='results')
   user = relationship('User', backref='results')
+
+  def formatted_elapsed(self):
+    return "{:d}:{:02d}:{:02d}".format(self.elapsed // 3600, self.elapsed // 60 % 60, self.elapsed % 60)
